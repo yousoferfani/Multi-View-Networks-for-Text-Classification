@@ -1,5 +1,4 @@
-# Multi-View-Networks-for-Text-Classification
-Multi-View Networks for Text Classification
+# Multi-View- Deep neural Network-for-Text-Classification
 
 This code is my implementation of the paper:
 "Multi View network for text classification"
@@ -12,11 +11,13 @@ and regular expression package: re
 
 The accuracy of the validation set is now around 80% :
 
-It can be improved by trying:
+The model can be improved by trying:
 - different optimizers
 - different learning rates
 - diferent regularization (dropout percentage)
 - data Augmentation 
+
+---------------------------------------------------------
 	
 
 
