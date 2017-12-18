@@ -10,14 +10,14 @@ import matplotlib.pyplot as plt
 labels = np.load('labels_50.npy')
 train_data = np.load('train_data_50.npy')
 # Parameters
-learning_rate =.0005
+learning_rate =.01
 training_iters = 200000
 batch_size = 50
 display_step = 10
 n_input = train_data.shape[1]
 n_classes = 2
 embedding_length = 50
-training_epochs = 500
+training_epochs = 2000
 split = 500
 valid_data = train_data[3000:,:,:]
 valid_labels = labels[3000:]
@@ -28,16 +28,22 @@ labels = labels[:3000]
 x = tf.placeholder(tf.float32, [None, n_input, embedding_length])
 y = tf.placeholder(tf.float32, [None, n_classes])
 keep = tf.placeholder('float')
+learning_rate = tf.placeholder('float')
+
 # First  generate 8 selections (s_i) and then generate8 views (v_i) based on those selections
 def selection_generator(x, W_s, w_s, bias_Ws,bias_ws, keep):
     mult1 = tf.tensordot(x,W_s,axes =[[2],[0]]) 
 # sum it with the bias
     sum1 = tf.add(mult1, bias_Ws)
 # tanh activation   
+    sum1= tf.nn.dropout(sum1, keep)
+
     tanh_select = tf.tanh(sum1) # W_s 300*200 multiply from right final : batch * max_sent*200
     mult2 = tf.tensordot(tanh_select, w_s,axes =[[2],[0]])
     m_ih = tf.add(mult2,bias_ws)
     m_ih = tf.reshape(m_ih,[-1,n_input])
+    m_ih= tf.nn.dropout(m_ih, keep)
+
     dih = tf.nn.softmax(m_ih) # The default: softmax on the last dimension -> sentence_length
     dih = tf.layers.batch_normalization(dih)
     dih_resh = tf.reshape(dih,[-1]) 
@@ -104,8 +110,11 @@ pred = tf.nn.softmax(fully_connected_layer)
 cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=fully_connected_layer_drop, labels=y))
 correct_prediction = tf.equal(tf.argmax(pred, 1), tf.argmax(y, 1))
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
+# tf.train.AdamOptimizer
+#optimizer = tf.train.AdagradOptimizer(learning_rate=learning_rate).minimize(cost)
 optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost)
 
+#tf.train.AdadeltaOptimizer
 # run a session on the tf graph
 init = tf.global_variables_initializer()
 with tf.Session() as sess:
@@ -113,8 +122,10 @@ with tf.Session() as sess:
    avg_cost_ev = []
    avg_accur_ev = []
    avg_accur_valid_ev = []
+   lr=.0005
    print("Training started....")    
    for epoch in range(training_epochs):
+#       lr=lr*.95
        avg_cost = 0.
        avg_acc = 0.
        acc_valid = 0.
@@ -122,16 +133,16 @@ with tf.Session() as sess:
        batch_size_valid =  total_batch 
        for i in range(total_batch):
            batch_x = train_data[i*batch_size:(i+1)*batch_size]
-           batch_y = labels[i*batch_size:(i+1)*batch_size]
+           batch_y = labels[i*batch_size:(i+1)*batch_size] # .2
            _, c= sess.run([optimizer, cost ], feed_dict={x: batch_x,\
-                                                          y: batch_y , keep: .3})
+                                                          y: batch_y , keep: .2,learning_rate : lr})
                                                           
            acc = accuracy.eval(feed_dict={x:  batch_x ,\
-                                                          y: batch_y, keep: 1.0})                                          
+                                                          y: batch_y, keep: 1.0,learning_rate : lr})                                          
                                                                      
            avg_cost  += float(c) / total_batch
            avg_acc   += float(acc) /total_batch
-       c_val_total = accuracy.eval(feed_dict={x:  valid_data , y: valid_labels , keep:1.0}) 
+       c_val_total = accuracy.eval(feed_dict={x:  valid_data , y: valid_labels , keep:1.0,learning_rate : lr}) 
        avg_cost_ev.append(avg_cost)
        avg_accur_ev.append(avg_acc)
        avg_accur_valid_ev.append(c_val_total )
